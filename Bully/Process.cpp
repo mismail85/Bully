@@ -15,7 +15,6 @@ Process::~Process(void)
 {
 }
 
-
 void Process::initElection()
 {
 	m_socketManager.send( string(ELECTION) + ":" +convertIntToString(m_processId) );
@@ -27,54 +26,52 @@ void Process::initElection()
 		message = m_socketManager.receive();
 
 	command.setMessage(message);
-	cout << message;
+
 	if(message.empty()){
-				
+
 		enterCommandMode();
 	}
 	else if( command.processId < m_processId){
 		string message = m_socketManager.receive();
-			if(message.empty())
-				enterCommandMode();
-		return;
-	}
-	else if( command.processId > m_processId){
-		cout << "I am Slave"<< endl;
-		enterSlaveryMode();
-	}
-	cout << "end of initelection"<<endl;
+		
+		if(message.empty())
+			enterCommandMode();
+		return;		
+	}	
+
+	enterSlaveryMode();
 }
 
 
 void Process::enterCommandMode()
 {
 	cout << "I am the coordinator " << endl;
+
 	while(TRUE){
-		m_socketManager.send( string(COORDINATOR) + ":" +convertIntToString(m_processId) );
+		m_socketManager.send( string(COORDINATOR) + ":" +convertIntToString(m_processId) );	
 		string message = m_socketManager.receive();
 
-			Command command(message);
-				
-			if(command.command == COORDINATOR)
-				message = m_socketManager.receive();
-			command.setMessage(message);
-			if(command.isValid() && command.command == ELECTION && command.processId > m_processId)
-				return;
-		}
+		message = m_socketManager.receive();
+
+		Command command(message);
+		if(command.isValid() && (command.command == ELECTION) && (command.processId > m_processId))
+			return;
+	}
 }
 
 void Process::enterSlaveryMode()
 {
+	cout << "I am Slave"<< endl;
 	while(TRUE){
 		string message = m_socketManager.receive();
-		Command command(message);
-		if(command.isValid() && command.command == ELECTION && command.processId > m_processId){
+
+		if(message.empty())
 			return;
-		}
+
+		Command command(message);
+		if(command.isValid() && (command.command == ELECTION) && (command.processId < m_processId))
+			return;
+
 	}
 }
 
-void Process::sendProcessId()
-{
-	m_socketManager.send( convertIntToString(m_processId) );
-}

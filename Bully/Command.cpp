@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Command.h"
 #include <iostream>
+#include "global.h"
+#include <time.h> 
 
 Command::Command(string message)
 	:m_isValid(false)
@@ -15,7 +17,17 @@ Command::~Command()
 
 void Command::displayMessage()
 {
-	cout << command << "     "<<processId << endl;
+	string type;
+	if(command == COORDINATOR)
+		type = "Coordinator";
+	else if(command == ELECTION)
+		type = "ELECTION";
+
+	time_t currentTime;
+	time(&currentTime);
+	char buf[1024];
+	ctime_s(buf, 1024, &currentTime);
+	cout << type << "     processId = "<<processId << "      time = "<< buf << endl;
 }
 
 void Command::setMessage(string message)

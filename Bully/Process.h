@@ -9,7 +9,6 @@ public:
 	void initElection();
 
 private:
-	void sendProcessId();
 	void enterSlaveryMode();
 	void enterCommandMode();
 		
