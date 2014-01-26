@@ -71,7 +71,6 @@ void Process::enterSlaveryMode()
 		Command command(message);
 		if(command.isValid() && (command.command == ELECTION) && (command.processId < m_processId))
 			return;
-
 	}
 }
 
