@@ -17,35 +17,41 @@ Process::~Process(void)
 
 void Process::initElection()
 {
-	m_socketManager.send( string(ELECTION) + ":" +convertIntToString(m_processId) );
-
-	string message = m_socketManager.receive();
-
-	Command command(message);
-	if(command.processId == m_processId)
-		message = m_socketManager.receive();
-
-	command.setMessage(message);
-
-	if(message.empty()){
+	
+	if(enterElectionMode()){
 
 		enterCommandMode();
 	}
-	else if( command.processId < m_processId){
-		string message = m_socketManager.receive();
-		
-		if(message.empty())
-			enterCommandMode();
-		return;		
-	}	
-
+	
 	enterSlaveryMode();
 }
 
+bool Process::enterElectionMode()
+{
+	while(TRUE){
+		m_socketManager.send( string(ELECTION) + ":" +convertIntToString(m_processId) );
+
+		string message = m_socketManager.receive();
+
+		Command command(message);
+		if(command.processId == m_processId)
+			message = m_socketManager.receive();
+
+		if(message.empty())
+			return true;
+
+		command.setMessage(message);
+		if(command.isValid() && (command.command == COORDINATOR) && (command.processId > m_processId))
+			return false;
+		if(command.isValid() && (command.command == ELECTION))
+			if(command.processId > m_processId)
+				return false;
+	}
+}
 
 void Process::enterCommandMode()
 {
-	cout << "I am the coordinator " << endl;
+	cout << "I am the coordinator ===>" <<m_processId << endl;
 
 	while(TRUE){
 		m_socketManager.send( string(COORDINATOR) + ":" +convertIntToString(m_processId) );	
@@ -54,14 +60,14 @@ void Process::enterCommandMode()
 		message = m_socketManager.receive();
 
 		Command command(message);
-		if(command.isValid() && (command.command == ELECTION) && (command.processId > m_processId))
+		if(command.isValid() && (command.command == ELECTION) )
 			return;
 	}
 }
 
 void Process::enterSlaveryMode()
 {
-	cout << "I am Slave"<< endl;
+	cout << "I am Slave ===>"<<m_processId << endl;
 	while(TRUE){
 		string message = m_socketManager.receive();
 

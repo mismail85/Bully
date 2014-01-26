@@ -11,7 +11,8 @@ public:
 private:
 	void enterSlaveryMode();
 	void enterCommandMode();
-		
+	bool enterElectionMode();
+
 	SocketManager m_socketManager;
 	unsigned int m_processId;
 };
