@@ -29,6 +29,7 @@ void Process::initElection()
 bool Process::enterElectionMode()
 {
 	while(TRUE){
+		
 		m_socketManager.send( string(ELECTION) + ":" +convertIntToString(m_processId) );
 
 		string message = m_socketManager.receive();
@@ -43,9 +44,8 @@ bool Process::enterElectionMode()
 		command.setMessage(message);
 		if(command.isValid() && (command.command == COORDINATOR) && (command.processId > m_processId))
 			return false;
-		if(command.isValid() && (command.command == ELECTION))
-			if(command.processId > m_processId)
-				return false;
+		if(command.isValid() && (command.command == ELECTION) && (command.processId > m_processId))
+			return false;
 	}
 }
 
@@ -60,7 +60,7 @@ void Process::enterCommandMode()
 		message = m_socketManager.receive();
 
 		Command command(message);
-		if(command.isValid() && (command.command == ELECTION) )
+		if(command.isValid() && (command.command == ELECTION) && (command.processId > m_processId))
 			return;
 	}
 }
@@ -68,6 +68,7 @@ void Process::enterCommandMode()
 void Process::enterSlaveryMode()
 {
 	cout << "I am Slave ===>"<<m_processId << endl;
+	bool stopElecting = true;
 	while(TRUE){
 		string message = m_socketManager.receive();
 
@@ -75,7 +76,10 @@ void Process::enterSlaveryMode()
 			return;
 
 		Command command(message);
-		if(command.isValid() && (command.command == ELECTION) && (command.processId < m_processId))
+
+		if(command.isValid() && (command.command == COORDINATOR) && (command.processId > m_processId))
+			stopElecting = false;
+		if(command.isValid() && (command.command == ELECTION) && (command.processId < m_processId) && !stopElecting)
 			return;
 	}
 }
