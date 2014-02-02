@@ -25,7 +25,6 @@ Process::~Process(void)
 
 void Process::initElection()
 {
-	m_socketManager.setReceiveTimeout( TIMEOUT_MS );
 	if(enterElectionMode()){
 
 		enterCommandMode();
@@ -37,6 +36,7 @@ void Process::initElection()
 bool Process::enterElectionMode()
 {
 	cout << "I am electing my self" << endl;
+	m_socketManager.setReceiveTimeout( ELECTION_TIMEOUT_MS);
 	while(TRUE){
 
 		sendMessage( string(ELECTION) );
@@ -63,7 +63,7 @@ void Process::enterCommandMode()
 	cout << "I am the coordinator ===>" <<m_processId << endl;
 
 	bool finishedCount = false;
-	m_socketManager.setReceiveTimeout( TIMEOUT_MS - 100);
+	m_socketManager.setReceiveTimeout( COMMAND_TIMEOUT);
 
 	_beginthreadex(0, 0 , waitForStart, this, 0, 0);
 
@@ -103,7 +103,7 @@ void Process::enterSlaveryMode()
 {
 	cout << "I am Slave ===>"<<m_processId << endl;
 
-	m_socketManager.setReceiveTimeout( TIMEOUT_MS );
+	m_socketManager.setReceiveTimeout( SLAVE_TIMEOUT);
 	bool stopElecting = true;
 	while(TRUE){
 		string message = m_socketManager.receive();
@@ -116,10 +116,12 @@ void Process::enterSlaveryMode()
 
 		if(command.isValid()){
 			if((command.command == COORDINATOR) && (command.processId > m_processId))
+				continue;
+			/*if((command.command == ELECTION) && (command.processId > m_processId))
 				stopElecting = false;
 			if((command.command == ELECTION) && (command.processId < m_processId) && !stopElecting){
 				return;
-			}
+			}*/
 			if(command.command == TCP_CONNECT){
 				cout << "tcp connect command received" << endl;
 				char ipBuf[DEFAULT_BUFLEN];

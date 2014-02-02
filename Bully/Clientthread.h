@@ -11,17 +11,22 @@
 int findMinNumber(const string & numbers)
 {
 	int min = -1;
-	int pos = -1;
+	int pos = 0;
 	int prevPos = 0;
 	do{
-		++pos;
 		pos = numbers.find(',', pos);
-		string number = numbers.substr(prevPos, pos - prevPos);
-		int iNumber = atoi(number.c_str());
+		if(pos != -1){
+			string number = numbers.substr(prevPos, pos - prevPos);
+			int iNumber = atoi(number.c_str());
 
-		if(iNumber < min || min == -1)
-			min = iNumber;
-		prevPos = pos + 1;
+			if(iNumber < min || min == -1){
+				min = iNumber;
+				cout << "pos = " << pos<< endl;
+				cout << "min =" << min << endl;
+			}
+			prevPos = pos + 1;
+			++pos;
+		}
 	}while(pos  != -1);
 	return min;
 }
@@ -33,7 +38,6 @@ unsigned int _stdcall clientThread(void *data)
 	SOCKET ConnectSocket = INVALID_SOCKET;
 
 	char recvbuf[DEFAULT_BUFLEN];
-	memset(recvbuf, 0, DEFAULT_BUFLEN);
 	int iResult;
 
 	// Create a SOCKET for connecting to server
@@ -50,7 +54,7 @@ unsigned int _stdcall clientThread(void *data)
 	address.sin_addr.s_addr = inet_addr ((char*)data);
 
 	iResult = connect(ConnectSocket, (SOCKADDR*)&address, sizeof(address));
-	
+
 	if(iResult == SOCKET_ERROR){
 		printf("unable to connect to server: %d\n", WSAGetLastError());
 		return 1;
@@ -58,26 +62,31 @@ unsigned int _stdcall clientThread(void *data)
 
 	if(ConnectSocket == INVALID_SOCKET)
 		cout << "socket is invalid" << endl;
-	
+
 	string numbers;
 
-	iResult = recv(ConnectSocket, recvbuf, DEFAULT_BUFLEN, 0);
+	do{
+		memset(recvbuf, 0, DEFAULT_BUFLEN);
+		iResult = recv(ConnectSocket, recvbuf, DEFAULT_BUFLEN-1, 0);
 
-	if ( iResult == SOCKET_ERROR){
-		cout << "could not receive data!!!" <<  endl;
-		closesocket(ConnectSocket);
-		return 1;
-	}
-	
-	printf("Bytes received: %d\n", iResult);
+		if ( iResult == SOCKET_ERROR){
+			cout << "could not receive data!!!" <<  endl;
+			closesocket(ConnectSocket);
+			return 1;
+		}
 
-	cout << "received data = " << recvbuf << endl;	
-
-	numbers.append(recvbuf);
+		cout << "received data = " << recvbuf << endl;	
+		char *ptr = strstr(recvbuf, "\\");
+		if(ptr){
+			*ptr = '\0';
+			break;
+		}
+		numbers.append(recvbuf);
+	}while(iResult > 0);
 	int min = findMinNumber(numbers);
 
 	string minNumber = convertIntToString(min);
-	cout << "minNumber Length = " << minNumber.length() << endl;
+
 	// Send an initial buffer
 	iResult = send( ConnectSocket, minNumber.c_str(), minNumber.length(), 0 );
 	if (iResult == SOCKET_ERROR) {
@@ -87,15 +96,14 @@ unsigned int _stdcall clientThread(void *data)
 		return 1;
 	}
 
-	printf("Bytes Sent: %ld\n", iResult);
 	cout << "value sent =" << min << endl;
-	
+
 	// shutdown the connection since no more data will be sent
 	iResult = shutdown(ConnectSocket, SD_SEND);
 	if (iResult == SOCKET_ERROR) {
-	printf("shutdown failed with error: %d\n", WSAGetLastError());
-	closesocket(ConnectSocket);
-	return 1;
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(ConnectSocket);
+		return 1;
 	}
 
 	closesocket(ConnectSocket);

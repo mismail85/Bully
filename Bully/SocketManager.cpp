@@ -71,9 +71,6 @@ void SocketManager::initReceiveSocket()
 	if(setsockopt(m_receiveSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&broadcastValue, sizeof(broadcastValue)) == SOCKET_ERROR)
 		cout<< "could not set socket option";
 
-	static int timeout = TIMEOUT_MS;
-	setsockopt(m_receiveSocket, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout,sizeof(timeout));
-
 	int iResult = 0;
 	iResult = bind(m_receiveSocket, (SOCKADDR *) & RecvAddr, sizeof (RecvAddr));
 	if (iResult != 0) {

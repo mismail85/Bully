@@ -3,6 +3,8 @@
 #include "global.h"
 #include "Process.h"
 
+#include <time.h>
+
 Task::Task()
 	:m_current(0)
 {
@@ -14,13 +16,14 @@ Task::~Task(void)
 
 void Task::addResult(const int result)
 {
-	//TODO : gaurd this function with mutex
+	//TODO : guard this function with mutex
 	m_results.push_back( result);
 
 	if(m_results.size() == Process::processCount){
 		m_results.insert(m_results.begin(), m_remainingItems.begin(), m_remainingItems.end());
 		int min = m_results[0];
 		for(int i = 0; i < m_results.size(); i++){
+			
 			if(m_results[i] < min)
 				min = m_results[i];
 		}
@@ -30,13 +33,15 @@ void Task::addResult(const int result)
 
 string Task::generateNumbers()
 {
-	//srand();
+	srand (time(NULL));
 	string numbers;
 	for(int i = 0; i < ARRAY_LENGTH; i++){
-		numbers.append( convertIntToString(i) );
+		numbers.append( convertIntToString(rand()) );
 		if(i < ARRAY_LENGTH - 1)
 			numbers.append(",");
 	}
+
+	cout << "Generated numbers =" << numbers << endl;
 	return numbers;
 }
 
@@ -60,22 +65,19 @@ void Task::splitTask(const int processCount)
 				++items;
 		}while(pos != -1 && items < itemsPerProcess);
 		string subTask = numbers.substr(prevPos, pos - prevPos);
-		cout << "prevPos = " << prevPos << endl;
-		cout << "pos = " << pos << endl;
-		cout << "inserted "<< subTask << endl;
+
 		m_splitedTasks.push_back(subTask);
 		prevPos = pos + 1;
 	}
-	//TODO : there is a bug here when the slaves count is one
-	// i should not insert any number in the remaining list
-	// i should send all numbers to the slave process running
+	if(pos == -1)
+		return;
+
 	do{
 		++pos;
 		pos = numbers.find(',', pos);
 		
 			string number = numbers.substr(prevPos, pos - prevPos);
 			int iNumber = atoi(number.c_str());
-			cout << "number inserted = " << iNumber << endl;
 			m_remainingItems.push_back( iNumber);
 			prevPos = pos + 1;
 		
