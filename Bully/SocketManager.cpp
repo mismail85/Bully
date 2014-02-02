@@ -34,7 +34,7 @@ void SocketManager::initSendSocket()
 	}
 	printf("Socket created.\n");
 
-		int broadcastValue = 1;
+	int broadcastValue = 1;
 	if(setsockopt(m_sendSocket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcastValue, sizeof(broadcastValue)) == SOCKET_ERROR)
 		cout<< "could not set socket option";
 }
@@ -88,18 +88,26 @@ string SocketManager::receive()
 	char RecvBuf[1024];
 	int BufLen = 1024;
 
+	memset(RecvBuf, 0, 1024);
+
 	sockaddr_in SenderAddr;
 	int SenderAddrSize = sizeof (SenderAddr);
 
 	iResult = recvfrom(m_receiveSocket, RecvBuf, BufLen, 0, (SOCKADDR *) & SenderAddr, &SenderAddrSize);
-	if(WSAGetLastError() == WSAETIMEDOUT)
-			return string();
-
+	if(WSAGetLastError() == WSAETIMEDOUT){
+	
+		return string();
+	}
 	if (iResult == SOCKET_ERROR) {
 		wprintf(L"recvfrom failed with error %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
-
-	RecvBuf[iResult] = '\0';
+	
 	return string(RecvBuf);
+}
+
+void SocketManager::setReceiveTimeout(unsigned int timeout)
+{
+		if(setsockopt(m_receiveSocket, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout,sizeof(timeout)))
+			cout << "could not set socket option "<<endl;
 }

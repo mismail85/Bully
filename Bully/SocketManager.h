@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Windows.h>
+#include <WinSock2.h>
 #include <string.h>
 #include <iostream>
 
@@ -13,6 +13,7 @@ public:
 	virtual ~SocketManager(void);
 	void send(const string& message );
 	string receive();
+	void setReceiveTimeout(unsigned int timeout);
 
 private:
 	bool initialize();

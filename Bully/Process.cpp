@@ -2,140 +2,22 @@
 #include "Process.h"
 #include "global.h"
 #include "Command.h"
+#include "Clientthread.h"
+#include "ServerThread.h"
+#include "Task.h"
 
 #include <thread>
 
-/////////////////////////////////
-
-#define DEFAULT_BUFLEN 1024
-#define DEFAULT_PORT "8889"
-//////////////////////////////////
-int serverThread()
-{
-WSADATA wsaData;
-    int iResult;
-
-    SOCKET ListenSocket = INVALID_SOCKET;
-    SOCKET ClientSocket = INVALID_SOCKET;
-
-    struct addrinfo *result = NULL;
-    struct addrinfo hints;
-
-    int iSendResult;
-    char recvbuf[DEFAULT_BUFLEN];
-    int recvbuflen = DEFAULT_BUFLEN;
-    
-    // Initialize Winsock
-    iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-    if (iResult != 0) {
-        printf("WSAStartup failed with error: %d\n", iResult);
-        return 1;
-    }
-
-    ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
-
-    // Resolve the server address and port
-    iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
-    if ( iResult != 0 ) {
-        printf("getaddrinfo failed with error: %d\n", iResult);
-        WSACleanup();
-        return 1;
-    }
-
-    // Create a SOCKET for connecting to server
-    ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    if (ListenSocket == INVALID_SOCKET) {
-        printf("socket failed with error: %ld\n", WSAGetLastError());
-        freeaddrinfo(result);
-        WSACleanup();
-        return 1;
-    }
-
-    // Setup the TCP listening socket
-    iResult = bind( ListenSocket, result->ai_addr, (int)result->ai_addrlen);
-    if (iResult == SOCKET_ERROR) {
-        printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    freeaddrinfo(result);
-
-    iResult = listen(ListenSocket, SOMAXCONN);
-    if (iResult == SOCKET_ERROR) {
-        printf("listen failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // Accept a client socket
-    ClientSocket = accept(ListenSocket, NULL, NULL);
-    if (ClientSocket == INVALID_SOCKET) {
-        printf("accept failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // No longer need server socket
-    closesocket(ListenSocket);
-
-    // Receive until the peer shuts down the connection
-    do {
-
-        iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
-        if (iResult > 0) {
-            printf("Bytes received: %d\n", iResult);
-
-        // Echo the buffer back to the sender
-            iSendResult = send( ClientSocket, recvbuf, iResult, 0 );
-            if (iSendResult == SOCKET_ERROR) {
-                printf("send failed with error: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
-                WSACleanup();
-                return 1;
-            }
-            printf("Bytes sent: %d\n", iSendResult);
-        }
-        else if (iResult == 0)
-            printf("Connection closing...\n");
-        else  {
-            printf("recv failed with error: %d\n", WSAGetLastError());
-            closesocket(ClientSocket);
-            WSACleanup();
-            return 1;
-        }
-
-    } while (iResult > 0);
-
-    // shutdown the connection since we're done
-    iResult = shutdown(ClientSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(ClientSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // cleanup
-    closesocket(ClientSocket);
-    WSACleanup();
-}
+unsigned int Process::processCount = 0;
+Task Process::task = Task();
 
 Process::Process(void)
 {
 	m_processId = (unsigned int) GetCurrentProcessId();
 
 	cout << "Process Id= "<< m_processId << endl;
-}
 
+}
 
 Process::~Process(void)
 {
@@ -143,20 +25,21 @@ Process::~Process(void)
 
 void Process::initElection()
 {
-	
+	m_socketManager.setReceiveTimeout( TIMEOUT_MS );
 	if(enterElectionMode()){
 
 		enterCommandMode();
 	}
-	
+
 	enterSlaveryMode();
 }
 
 bool Process::enterElectionMode()
 {
+	cout << "I am electing my self" << endl;
 	while(TRUE){
-		
-		m_socketManager.send( string(ELECTION) + ":" +convertIntToString(m_processId) );
+
+		sendMessage( string(ELECTION) );
 
 		string message = m_socketManager.receive();
 
@@ -178,38 +61,100 @@ bool Process::enterElectionMode()
 void Process::enterCommandMode()
 {
 	cout << "I am the coordinator ===>" <<m_processId << endl;
-	
-	thread serverThread(serverThread);
+
+	bool finishedCount = false;
+	m_socketManager.setReceiveTimeout( TIMEOUT_MS - 100);
+
+	_beginthreadex(0, 0 , waitForStart, this, 0, 0);
 
 	while(TRUE){
-		m_socketManager.send( string(COORDINATOR) + ":" +convertIntToString(m_processId) );	
+		sendMessage( string(COORDINATOR) );	
 		string message = m_socketManager.receive();
 
-		message = m_socketManager.receive();
+		Command command(message, false);
+		if(command.isValid() && (command.command == COORDINATOR) && (command.processId == m_processId)){
+			message = m_socketManager.receive();
+			command.setMessage(message);
+		}
 
-		Command command(message);
-		if(command.isValid() && (command.command == ELECTION) && (command.processId > m_processId))
-			return;
+		if( command.isValid() ){
+
+			if((command.command == ELECTION) && (command.processId > m_processId)){
+				return;
+			}
+
+			if(command.command == COUNT_RESPONSE){
+				++ Process::processCount;
+				finishedCount = true;
+			}
+		}
+		else{
+			if(finishedCount){
+				finishedCount = false;
+				_beginthreadex(0, 0, serverThread, 0, 0, 0);
+				
+				sendMessage( string(TCP_CONNECT ), getMyIp());
+			}
+		}
 	}
 }
 
 void Process::enterSlaveryMode()
 {
 	cout << "I am Slave ===>"<<m_processId << endl;
-	
+
+	m_socketManager.setReceiveTimeout( TIMEOUT_MS );
 	bool stopElecting = true;
 	while(TRUE){
 		string message = m_socketManager.receive();
 
-		if(message.empty())
+		if(message.empty()){
 			return;
+		}
 
 		Command command(message);
 
-		if(command.isValid() && (command.command == COORDINATOR) && (command.processId > m_processId))
-			stopElecting = false;
-		if(command.isValid() && (command.command == ELECTION) && (command.processId < m_processId) && !stopElecting)
-			return;
+		if(command.isValid()){
+			if((command.command == COORDINATOR) && (command.processId > m_processId))
+				stopElecting = false;
+			if((command.command == ELECTION) && (command.processId < m_processId) && !stopElecting){
+				return;
+			}
+			if(command.command == TCP_CONNECT){
+				cout << "tcp connect command received" << endl;
+				char ipBuf[DEFAULT_BUFLEN];
+				strcpy_s(ipBuf, command.data.c_str());
+				_beginthreadex(0, 0, clientThread, (void*)ipBuf, 0, 0);
+			}
+			if( command.command == COUNT){
+				sendMessage(string(COUNT_RESPONSE));
+			}
+		}
+
 	}
 }
 
+void Process::sendMessage(const string & message, const string & data)
+{
+	m_socketManager.send(message + ":" + convertIntToString(m_processId) + ":" + data);
+}
+
+string Process::getMyIp()
+{
+	char ac[80];
+	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
+		cerr << "Error " << WSAGetLastError() <<
+			" when getting local host name." << endl;
+		return string();
+	}
+
+	struct hostent *phe = gethostbyname(ac);
+	if (phe == 0) {
+		cerr << "Yow! Bad host lookup." << endl;
+		return string();
+	}
+
+	struct in_addr addr;
+	memcpy(&addr, phe->h_addr_list[0], sizeof(struct in_addr));
+	return string( inet_ntoa(addr) );    
+}

@@ -7,14 +7,15 @@ using namespace std;
 class Command
 {
 public:
-	Command(string message);
+	Command(const string & message, bool print = true);
 	~Command();
 	
-	void setMessage(string message);
+	void setMessage(const string & message, bool print = true);
 	bool isValid();
 
 	unsigned int processId;
 	string command;
+	string data;
 
 private:
 	void displayMessage();

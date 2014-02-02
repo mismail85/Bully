@@ -4,10 +4,10 @@
 #include "global.h"
 #include <time.h> 
 
-Command::Command(string message)
+Command::Command(const string & message, bool print)
 	:m_isValid(false)
 {
-	setMessage(message);
+	setMessage(message, print);
 }
 
 
@@ -19,9 +19,13 @@ void Command::displayMessage()
 {
 	string type;
 	if(command == COORDINATOR)
-		type = "Coordinator";
+		return;
+	//	type = "Coordinator";
 	else if(command == ELECTION)
-		type = "ELECTION";
+		return;
+		//type = "ELECTION";
+	 else if(command == TCP_CONNECT)
+		type = "TCP Connect";
 
 	time_t currentTime;
 	time(&currentTime);
@@ -30,15 +34,20 @@ void Command::displayMessage()
 	cout << type << "     processId = "<<processId << "      time = "<< buf << endl;
 }
 
-void Command::setMessage(string message)
+void Command::setMessage(const string & message, bool print)
 {
 	int pos = message.find(':');
-	if(pos != -1){
 
-		processId = atol(message.substr(pos+1).c_str());
+	if(pos != -1){
 		command = message.substr(0, pos);
 
-		displayMessage();
+		int fpos = message.find(':', pos + 1);
+		if(fpos != -1){
+			processId = atol(message.substr(pos +1 , fpos).c_str());
+			data = message.substr(fpos+1);
+		}
+		if(print)
+			displayMessage();
 		m_isValid= true;
 		return;
 	}
