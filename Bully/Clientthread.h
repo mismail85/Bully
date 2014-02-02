@@ -75,14 +75,16 @@ unsigned int _stdcall clientThread(void *data)
 			return 1;
 		}
 
-		cout << "received data = " << recvbuf << endl;	
 		char *ptr = strstr(recvbuf, "\\");
 		if(ptr){
 			*ptr = '\0';
+			numbers.append(recvbuf);
 			break;
 		}
 		numbers.append(recvbuf);
 	}while(iResult > 0);
+	
+	cout << "received data = " << numbers << endl;	
 	int min = findMinNumber(numbers);
 
 	string minNumber = convertIntToString(min);

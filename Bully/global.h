@@ -9,12 +9,9 @@ using namespace std;
 #define PORT 8888 
 
 //Time out
-#define ELECTION_TIMEOUT_MS 1
+#define ELECTION_TIMEOUT_MS 10
 #define SLAVE_TIMEOUT 1000
 #define COMMAND_TIMEOUT (SLAVE_TIMEOUT - 100)
-
-#define DEFAULT_BUFLEN 1024
-
 
 // Commands
 #define COORDINATOR "1"
@@ -28,7 +25,7 @@ using namespace std;
 #define COUNT_RESPONSE "5"
 
 
-
+//Constants
 #define ARRAY_LENGTH 1000
 
 #define DEFAULT_BUFLEN 1024

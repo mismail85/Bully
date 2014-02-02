@@ -19,8 +19,7 @@ void Command::displayMessage()
 {
 	string type;
 	if(command == COORDINATOR)
-		return;
-		//type = "Coordinator";
+		type = "Coordinator";
 	else if(command == ELECTION)
 		type = "ELECTION";
 	 else if(command == TCP_CONNECT)

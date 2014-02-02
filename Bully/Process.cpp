@@ -104,7 +104,7 @@ void Process::enterSlaveryMode()
 	cout << "I am Slave ===>"<<m_processId << endl;
 
 	m_socketManager.setReceiveTimeout( SLAVE_TIMEOUT);
-	bool stopElecting = true;
+
 	while(TRUE){
 		string message = m_socketManager.receive();
 
@@ -117,11 +117,7 @@ void Process::enterSlaveryMode()
 		if(command.isValid()){
 			if((command.command == COORDINATOR) && (command.processId > m_processId))
 				continue;
-			/*if((command.command == ELECTION) && (command.processId > m_processId))
-				stopElecting = false;
-			if((command.command == ELECTION) && (command.processId < m_processId) && !stopElecting){
-				return;
-			}*/
+
 			if(command.command == TCP_CONNECT){
 				cout << "tcp connect command received" << endl;
 				char ipBuf[DEFAULT_BUFLEN];
